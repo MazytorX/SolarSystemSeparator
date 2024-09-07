@@ -1,0 +1,770 @@
+// ==UserScript==
+// @name         SolarSystemSeparator
+// @namespace    http://tampermonkey.net/
+// @version      0.64
+// @description  Separate all solar system by Galaxy for celestus game
+// @author       MazytorX
+// @match        https://horizon.celestus.fr/game.php?Uid=0
+// @icon         https://www.google.com/s2/favicons?domain=celestus.fr
+// @license MIT
+// @updateURL https://openuserjs.org/meta/mazytorx/SolarSystemSeparator.meta.js
+// @downloadURL https://openuserjs.org/install/mazytorx/SolarSystemSeparator.user.js
+// @include     	*horizon.celestus.fr*
+
+// @exclude				*forum.celestus.fr*
+
+// @run-at document-body
+// @noframes
+// @connect gagn-associates.com
+// @grant GM_setValue
+// @grant GM_getValue
+// ==/UserScript==
+
+var fenetre;
+var dansIframe;
+var pageJeu = document;
+var firstRun = false;
+
+window.onload = function(e){
+    const interval = setInterval(function() {
+        checkSeparatorLoaded();
+        checkCouronneOrbitalPage();
+        checkRampeChronos();
+        addTriFlotte();
+        ordinatorListSeparator();
+        FixAt15Trad();
+        premiumPageColoSectSysSeparator();
+        codePorteCopy();
+    }, 500); //On check toutes les  x secondes pour savoir si les séparateurs sont charger (1000 = 1 sec)
+}
+
+function codePorteCopy()
+{
+    var CodePorteFieldList = pageJeu.getElementById("contenu").getElementsByClassName("ZonePorte");
+    if (CodePorteFieldList == null)
+    {
+        return;
+    }
+
+    for (var i = 0; i < CodePorteFieldList.length; i++)
+    {
+        // -- commerce filter button --
+        var titleFilterButtonExist = pageJeu.getElementsByClassName("codePorteCopyButton")[i];
+        if (titleFilterButtonExist == null)
+        {
+            // create button
+            var button = document.createElement("a");
+            button.href = "#";
+            //button.className = "Next3";
+            button.innerHTML = "Coller CP";
+            button.style.marginBottom = "10px";
+            button.style.marginLeft = "4px";
+            button.style.border = "2px solid #0ca901";
+            button.style.borderRadius = "4px";
+            button.style.padding = "4px";
+            button.style.color = "#0ca901";
+            button.style.width = "fit-content";
+            button.className = "codePorteCopyButton "+i;
+            button.onclick = function(event)
+            {
+                // Collez le texte depuis le presse-papiers
+                navigator.clipboard.readText()
+                    .then(function(texteColle) {
+                    var CPElement = texteColle.split('-');
+                    if (CPElement.length > 1)
+                    {
+                        var target = event.target.className.split(' ')[1];
+                        pageJeu.getElementById("contenu").getElementsByClassName("ZonePorte")[target].children[0].value = CPElement[0];
+                        pageJeu.getElementById("contenu").getElementsByClassName("ZonePorte")[target].children[1].value = CPElement[1];
+                        pageJeu.getElementById("contenu").getElementsByClassName("ZonePorte")[target].children[2].value = CPElement[2];
+                        pageJeu.getElementById("contenu").getElementsByClassName("ZonePorte")[target].children[3].value = CPElement[3];
+                        pageJeu.getElementById("contenu").getElementsByClassName("ZonePorte")[target].children[4].value = CPElement[4];
+                    }
+                })
+                    .catch(function(err) {
+                    console.error('Erreur lors du collage du texte : ', err);
+                });
+            };
+
+            pageJeu.getElementById("contenu").getElementsByClassName("ZonePorte")[i].appendChild(button);
+        }
+    }
+}
+
+function premiumPageColoSectSysSeparator()
+{
+    if (pageJeu.getElementById("contenu").getElementsByClassName("ListePlanetesLigne").length > 0)
+    {
+        if (pageJeu.getElementsByClassName("prePagColoSectSysSep")[0] != null)
+        {
+            return;
+        }
+
+        var getPremiumPage = pageJeu.getElementById("contenu").getElementsByClassName("DeroulantVisible");
+        var currentSystem = null;
+        var Systemposition = 0;
+
+        for (var i = 0; i < getPremiumPage.length; i++)
+        {
+            for (var j = 0; j < getPremiumPage[i].children.length; j++)
+            {
+                if (getPremiumPage[i].children[j].className == "ListePlanetesLigne")
+                {
+                    var splitSystem = getPremiumPage[i].children[j].children[2].children[0].innerHTML.split(':')[1];
+                    if (splitSystem != currentSystem)
+                    {
+                        currentSystem = splitSystem;
+
+                        var node2 = document.createElement("DIV");
+                        node2.align = "center";
+                        node2.style.color = "#C42300";
+                        node2.style.backgroundColor = "#002334";
+                        node2.style.padding = "4px 0px 4px 0px";
+                        node2.style.border = "1px solid white";
+                        node2.className = "prePagColoSectSysSep";
+                        var text2 = document.createTextNode(splitSystem);
+                        node2.appendChild(text2);
+
+                        var list2 = getPremiumPage[i];
+                        list2.insertBefore(node2,list2.childNodes[Systemposition]);
+                        Systemposition = Systemposition + 2;
+                    }
+                    else
+                    {
+                        Systemposition = Systemposition + 1;
+                    }
+                }
+            }
+            Systemposition = 0;
+        }
+    }
+}
+
+function ordinatorListSeparator()
+{
+    if (pageJeu.getElementsByClassName("OrderListSeparator")[0] != null)
+    {
+        return;
+    }
+
+    var currentSystem = null;
+    var Systemposition = 0;
+
+    var ordinatorPage = pageJeu.getElementsByClassName("GrosTitre")[0];
+    if (ordinatorPage != null && ordinatorPage.innerHTML == "Ordinateur de Flottes")
+    {
+        var orderList = pageJeu.getElementsByClassName("OrdListeO");
+        //console.log(orderList);
+        for (var i = 0; i < orderList.length; i++)
+        {
+            var regExp = /\(([^)]+)\)/;
+            var matches = regExp.exec(orderList[i].children[2].innerHTML);
+            if (matches != null)
+            {
+                if (matches[1].split(':')[1] != currentSystem)
+                {
+                    currentSystem = matches[1].split(':')[1];
+
+                    var node2 = document.createElement("DIV");
+                    node2.align = "center";
+                    node2.style.color = "#C42300";
+                    node2.style.backgroundColor = "#002334";
+                    node2.style.padding = "4px 0px 4px 0px";
+                    node2.style.border = "1px solid white";
+                    node2.className = "OrderListSeparator";
+                    var text2 = document.createTextNode(matches[1].split(':')[1]);
+                    node2.appendChild(text2);
+
+                    var list2 = pageJeu.getElementsByClassName("DeroulantVisible")[0];
+                    list2.insertBefore(node2,list2.childNodes[Systemposition]);
+                    Systemposition = Systemposition + 2;
+                }
+                else
+                {
+                    Systemposition = Systemposition + 1;
+                }
+            }
+        }
+    }
+}
+
+function addTriFlotte()
+{
+    var flottePage = pageJeu.getElementsByClassName("GrosTitre")[0];
+    if (flottePage != null && flottePage.innerHTML == "Flottes en vol")
+    {
+        // if flotte page, get all flottes
+        var flottesCount = pageJeu.getElementById("contenu").children.length;
+        if (flottesCount > 0)
+        {
+            var flottes = pageJeu.getElementById("contenu").children;
+            if (flottes != null && flottes.length > 1)
+            {
+                // -- commerce filter button --
+                var titleFilterButtonExist = pageJeu.getElementById("filter_title");
+                if (titleFilterButtonExist == null)
+                {
+                    // create button
+                    var button = document.createElement("a");
+                    button.href = "#";
+                    //button.className = "Next3";
+                    button.innerHTML = "commerce Ponton";
+                    button.style.marginBottom = "10px";
+                    button.style.border = "2px solid #0ca901";
+                    button.style.borderRadius = "4px";
+                    button.style.padding = "4px";
+                    button.style.display = "block";
+                    button.style.color = "#0ca901";
+                    button.style.width = "fit-content";
+                    button.setAttribute("id","flotte_commerce_filter");
+                    button.onclick = function()
+                    {
+                        flotteFilter("COMMERCE");
+                    };
+                    pageJeu.getElementById("contenu").children[1].insertBefore(button,flottes[1].firstChild);
+
+                    // -- label tri, must be at the end ! --
+                    // label
+                    var filterTitle = document.createElement("DIV");
+                    filterTitle.align = "center";
+                    filterTitle.style.height = "28px";
+                    filterTitle.style.textDecoration = "underline";
+                    filterTitle.setAttribute("id", "filter_title");
+                    var text = document.createTextNode("Montrer/Cacher flotte :");
+                    filterTitle.appendChild(text);
+                    pageJeu.getElementById("contenu").children[1].insertBefore(filterTitle,flottes[1].firstChild);
+
+                    // apply saved filter
+                    var OrdrecommercerFilter = GM_getValue('OrdrecommercerFilter');
+                    if (OrdrecommercerFilter != null && OrdrecommercerFilter == true)
+                    {
+                        flotteFilter("COMMERCE");
+                    }
+                }
+            }
+        }
+    }
+}
+
+function checkRampeChronos()
+{
+    if (frames[0].chronos.length != 0)
+    {
+        // check if chronos is for Rample (PL)
+        if (frames[0].chronos[0].attributes[2].value.split('&')[1] == "Menu=PL")
+        {
+            var getPlanetSelected = pageJeu.getElementsByClassName("SelectPlanete")[0].parentNode.parentNode.id;
+            var time = frames[0].chronos[0].attributes[1].value;
+
+            // get current time + delay
+            var minutes = Math.floor(time / 60);
+            var afterSomeMinutes = new Date(new Date().getTime() + minutes * 60000);
+            //console.log(afterSomeMinutes.getTime());
+
+
+            var name = "Rampe" + getPlanetSelected;
+            try {
+            GM_setValue(name, afterSomeMinutes.getTime());
+            }
+            catch(err)
+            {console.log(err.message)}
+        }
+    }
+}
+
+// MazytorX Script - Colo and Sector Separator.
+function checkSeparatorLoaded()
+{
+    var ifColoSeparatorExist = pageJeu.getElementsByClassName("ColoSep").length;
+    var ifSectorSeparatorExist = pageJeu.getElementsByClassName("SectorSep").length;
+
+    if (ifColoSeparatorExist == 0 || ifSectorSeparatorExist == 0)
+    {
+        var hiddenColoElementCache = GM_getValue("hiddenColoElementCache");
+        if (hiddenColoElementCache == null)
+        {
+            hiddenColoElementCache = [];
+            GM_setValue('hiddenColoElementCache', hiddenColoElementCache);
+        }
+        var hiddenSectorElementCache = GM_getValue("hiddenSectorElementCache");
+        if (hiddenSectorElementCache == null)
+        {
+            hiddenSectorElementCache = [];
+            GM_setValue('hiddenSectorElementCache', hiddenSectorElementCache);
+        }
+
+        chargerColoSeparator();
+
+        hiddenColoElementCache.forEach(function(item)
+        {
+            hideOrNotColo(item);
+        });
+
+        hiddenSectorElementCache.forEach(function(item)
+        {
+            hideOrNotColo(item, true);
+        });
+
+        screenScrollAdaptation();
+        checkRampeLoaded();
+    }
+}
+
+function checkRampeLoaded()
+{
+    Object.keys(frames[0].Colonies).forEach(function (item, index) {
+        var colo = frames[0].Colonies[item];
+        var imgRExist = pageJeu.getElementById("C_"+item.slice(2));
+        if (colo["PL"] > 0 && imgRExist == null)
+        {
+            //load rampe timestamp var
+            var nameRampeToGet = "Rampe" + item.slice(2);
+            var rampeChronos = GM_getValue(nameRampeToGet);
+            var now = Date.now();
+            // image
+            var rampe = document.createElement("img");
+            rampe.src = "https://horizon.celestus.fr/CelestusV2/Interface/Skin/Icones/PL2.png";
+            rampe.className = "Rampe";
+            rampe.style.marginLeft = "-12px";
+            rampe.style.marginTop = "24px";
+            rampe.style.position = "initial";
+            rampe.style.borderRadius = "20px";
+            if (rampeChronos != null && rampeChronos > now)
+            {
+                rampe.style.backgroundColor = "#179405";
+            }
+            else if (rampeChronos != null)
+            {
+                rampe.style.backgroundColor = "#9d0c0c";
+            }
+            else
+            {
+                rampe.style.backgroundColor = "#6f6f6f";
+            }
+            rampe.setAttribute("id","C_" + item.slice(2));
+            pageJeu.getElementById(colo["Adresse"]).appendChild(rampe);
+        }
+    })
+    Object.keys(frames[0].Secteurs).forEach(function (item, index) {
+        var sect = frames[0].Secteurs[item];
+        var imgExist = pageJeu.getElementById("S_"+item.slice(2));
+        if (sect["PL"] > 0 && imgExist == null)
+        {
+            //console.log(pageJeu.getElementsByClassName("Rampe"));
+            //load rampe timestamp var
+            var nameRampeToGet2 = "Rampe" + item.slice(2);
+            var rampeChronos2 = GM_getValue(nameRampeToGet2);
+            var now2 = Date.now();
+            //console.log(pageJeu.getElementById(colo["Adresse"]));
+            // image
+            var rampe2 = document.createElement("img");
+            rampe2.src = "https://horizon.celestus.fr/CelestusV2/Interface/Skin/Icones/PL2.png";
+            rampe2.className = "Rampe";
+            rampe2.style.marginLeft = "-12px";
+            rampe2.style.marginTop = "24px";
+            rampe2.style.position = "initial";
+            rampe2.style.borderRadius = "20px";
+            if (rampeChronos2 != null && rampeChronos2 > now2)
+            {
+                rampe2.style.backgroundColor = "#179405";
+            }
+            else if (rampeChronos2 != null)
+            {
+                rampe2.style.backgroundColor = "#9d0c0c";
+            }
+            else
+            {
+                rampe2.style.backgroundColor = "#6f6f6f";
+            }
+            rampe2.setAttribute("id","S_"+item.slice(2));
+            pageJeu.getElementById(sect["Adresse"]).appendChild(rampe2);
+        }
+    })
+}
+
+function checkCouronneOrbitalPage()
+{
+    var ifCouronneOrbitaleExist = pageJeu.getElementById("CouronneAff");
+    if (ifCouronneOrbitaleExist != null)
+    {
+        // get arrow action and add save event
+        var leftArrow = pageJeu.getElementById("contenu");
+        leftArrow.children[3].href = "#";
+        leftArrow.children[3].addEventListener("click", couronneEditPaginPrev);
+
+        var RightArrow = pageJeu.getElementById("contenu");
+        RightArrow.children[4].href = "#";
+        RightArrow.children[4].addEventListener("click", couronneEditPaginCont);
+
+        // add reset pagination button
+        var checkButtonResetExist = pageJeu.getElementById("resetButtonPagination");
+        if (checkButtonResetExist == null)
+        {
+            // label
+            var node = document.createElement("DIV");
+            node.align = "center";
+            node.style.height = "28px";
+            node.setAttribute("id", "resetButtonPagination");
+            var text = document.createTextNode("retour position 1 : ");
+            node.appendChild(text);
+
+            pageJeu.getElementById("contenu").insertBefore(node, pageJeu.getElementById("contenu").children[2]);
+            // button
+            var button = document.createElement("a");
+            button.href = "#";
+            button.className = "Next3";
+            button.innerHTML = "ici";
+            button.addEventListener("click", resetPaginationAction);
+            pageJeu.getElementById("resetButtonPagination").appendChild(button);
+        }
+
+        // show the page
+        var pagin = GM_getValue('couronnePagination');
+        if (pagin == null || pagin == "")
+        {
+            pagin = ifCouronneOrbitaleExist.style.left;
+        }
+
+        pageJeu.getElementById("CouronneAff").style.left = pagin;
+    }
+}
+
+function couronneEditPaginPrev()
+{
+    var pagin = pageJeu.getElementById("CouronneAff").style.left;
+    pagin = pagin.slice(0, -2);
+    pagin = parseInt(pagin);
+    if (pagin < 0)
+    {
+        pagin += 680;
+        pagin = String(pagin) + "px";
+        GM_setValue('couronnePagination', pagin);
+    }
+}
+
+function couronneEditPaginCont()
+{
+    var pagin = pageJeu.getElementById("CouronneAff").style.left;
+    pagin = pagin.slice(0, -2);
+    pagin = parseInt(pagin);
+    pagin -= 680;
+    pagin = String(pagin) + "px";
+    GM_setValue('couronnePagination', pagin);
+}
+
+function resetPaginationAction()
+{
+    GM_setValue('couronnePagination', "0px");
+    pageJeu.getElementById("CouronneAff").style.left = "0px";
+}
+
+function flotteFilter(filter = null)
+{
+    if (filter == "COMMERCE")
+    {
+        var actualColor = pageJeu.getElementById("flotte_commerce_filter");
+        //console.log(pageJeu.getElementsByClassName("Ordrecommercer")[0].children[2].children[0].children[1].children[0].innerText);
+        if (actualColor.className == null || actualColor.className == "")
+        {
+            pageJeu.getElementById("flotte_commerce_filter").style.color = "#656565";
+            pageJeu.getElementById("flotte_commerce_filter").style.border = "2px solid #656565";
+            pageJeu.getElementById("flotte_commerce_filter").className = "CF";
+            // hide
+            for (var i = 0; i < pageJeu.getElementsByClassName("Ordrecommercer").length; i++)
+            {
+                var regExp = /\b1Ponton\b/;
+                var matches = regExp.exec(pageJeu.getElementsByClassName("Ordrecommercer")[i].children[2].children[0].children[1].children[0].innerText);
+
+                if (matches != null)
+                {
+                    pageJeu.getElementsByClassName("Ordrecommercer")[i].hidden = true;
+                }
+            }
+            //save
+            GM_setValue('OrdrecommercerFilter', true);
+        }
+        else if (actualColor.className == "CF")
+        {
+            pageJeu.getElementById("flotte_commerce_filter").style.color = "#0ca901";
+            pageJeu.getElementById("flotte_commerce_filter").style.border = "2px solid #0ca901";
+            pageJeu.getElementById("flotte_commerce_filter").className = "";
+            // show
+            for (var ii = 0; ii < pageJeu.getElementsByClassName("Ordrecommercer").length; ii++)
+            {
+                var regExp2 = /\b1Ponton\b/;
+                var matches2 = regExp2.exec(pageJeu.getElementsByClassName("Ordrecommercer")[ii].children[2].children[0].children[1].children[0].innerText);
+
+                if (matches2 != null)
+                {
+                    pageJeu.getElementsByClassName("Ordrecommercer")[ii].hidden = false;
+                }
+            }
+            //save
+            GM_setValue('OrdrecommercerFilter', false);
+        }
+    }
+}
+
+function screenScrollAdaptation()
+{
+    // Colo adaptation
+    pageJeu.getElementById("racourcis_colonies").onmousemove = null;
+    pageJeu.getElementById("racourcis_colonies").style.overflowY = "scroll";
+    pageJeu.getElementById("racourcis_colonies").style.width = "auto";
+    pageJeu.getElementById("Menu").style.left = "68px";
+    pageJeu.getElementById("MenuIcoGB").style.left = "68px";
+    pageJeu.getElementById("BotG").style.left = "68px";
+    pageJeu.getElementById("CadrePlaneteC").style.left = "0px";
+    pageJeu.getElementById("HorsJeu").style.paddingLeft = "80px";
+    pageJeu.getElementById("HorsJeu").style.paddingRight = "20px";
+
+    // Sector Adaptation
+    pageJeu.getElementById("racourcis_secteurs").onmousemove = null;
+    pageJeu.getElementById("racourcis_secteurs").style.overflowY = "scroll";
+    pageJeu.getElementById("racourcis_secteurs").style.width = "auto";
+    pageJeu.getElementById("MenuIcoDB").style.width = "68px";
+    pageJeu.getElementById("BotD").style.right = "68px";
+}
+
+function HiddeSavedSystem(item, sector = false)
+{
+    hideOrNotColo(item, sector);
+}
+
+function chargerColoSeparator()
+{
+      fenetre = frames[0].window;
+      pageJeu = frames[0].document;
+
+      var planetCoord = Object.keys(frames[0].Colonies);
+      var secteursCoord = Object.keys(frames[0].Secteurs);
+
+      var currentSystem = 0;
+      var elementAdded = 1;
+
+      var ifColoSeparatorExist = pageJeu.getElementsByClassName("ColoSep").length;
+      var ifSectorSeparatorExist = pageJeu.getElementsByClassName("SectorSep").length;
+
+      if (ifColoSeparatorExist == 0)
+      {
+          var galaxySeparatorColo = 0;
+          var galaxyColoCache = 0;
+          var firstCacheInitColo = true;
+          var coloIndex = 1;
+
+          planetCoord.forEach(function(item, index)
+          {
+              if (item != 0)
+              {
+                  var planetSystem = item.split(':')[2];
+
+                  if (galaxyColoCache != item.split(':')[1])
+                  {
+                      galaxyColoCache = item.split(':')[1];
+                      if (firstCacheInitColo)
+                      {
+                          firstCacheInitColo = false;
+                      }
+                      else
+                      {
+                          galaxySeparatorColo += 1;
+                          elementAdded = 1;
+                          coloIndex = 1;
+                      }
+                  }
+
+                  if (planetSystem != currentSystem)
+                  {
+                      var node = document.createElement("DIV");
+                      node.align = "center";
+                      node.style.color = "#C42300";
+                      node.style.backgroundColor = "#002334";
+                      node.style.padding = "4px 0px 4px 0px";
+                      node.style.border = "1px solid white";
+                      node.className = "ColoSep";
+                      node.onclick = function()
+                      {
+                          var sectorColo_toHideOrNot = item.split(':')[1] + ":" + item.split(':')[2];
+                          hideOrNotColo(sectorColo_toHideOrNot, false, true);
+                      };
+                      //node.className = "Rac_Gal";
+                      var text = document.createTextNode(planetSystem);
+                      node.appendChild(text);
+
+                      var list = pageJeu.getElementById("racourcis_colonies").getElementsByClassName("Rac_Gal_O")[galaxySeparatorColo];
+                      list.childNodes[coloIndex + elementAdded].className += " " + galaxyColoCache + ":" + planetSystem + "_C";
+                      list.childNodes[coloIndex + elementAdded].setAttribute("id",item.slice(2));
+                      list.insertBefore(node,list.childNodes[coloIndex + elementAdded]);
+
+                      currentSystem = planetSystem;
+                      elementAdded += 1;
+                  }
+                  else
+                  {
+                      var list2 = pageJeu.getElementById("racourcis_colonies").getElementsByClassName("Rac_Gal_O")[galaxySeparatorColo];
+                      list2.childNodes[coloIndex+ elementAdded].className += " " + galaxyColoCache + ":" + planetSystem + "_C";
+                      list2.childNodes[coloIndex + elementAdded].setAttribute("id",item.slice(2));
+                  }
+                  coloIndex += 1;
+              }
+          });
+      }
+
+    elementAdded = 1; // reset count
+
+    if (ifSectorSeparatorExist == 0)
+    {
+        var galaxySeparator = 0;
+        var galaxyCache = 0;
+        var firstCacheInit = true;
+        var sectorIndex = 1;
+
+        secteursCoord.forEach(function(item, index)
+        {
+            if (item != 0)
+            {
+                var secteurSystem = item.split(':')[2];
+
+                if (galaxyCache != item.split(':')[1])
+                {
+                    galaxyCache = item.split(':')[1];
+                    if (firstCacheInit)
+                    {
+                        firstCacheInit = false;
+                    }
+                    else
+                    {
+                        galaxySeparator += 1;
+                        sectorIndex = 1;
+                        elementAdded = 1;
+                    }
+                }
+
+                if (secteurSystem != currentSystem)
+                {
+                    var node = document.createElement("DIV");
+                    node.align = "center";
+                    node.style.color = "#C42300";
+                    node.style.backgroundColor = "#002334";
+                    node.style.padding = "4px 0px 4px 0px";
+                    node.style.border = "1px solid white";
+                    node.className = "SectorSep";
+                    node.onclick = function()
+                    {
+                        var sectorColo_toHideOrNot = item.split(':')[1] + ":" + item.split(':')[2];
+                        hideOrNotColo(sectorColo_toHideOrNot, true, true);
+                    };
+                    //node.className = "Rac_Gal";
+                    var text = document.createTextNode(secteurSystem);
+                    node.appendChild(text);
+
+                    var list = pageJeu.getElementById("racourcis_secteurs").getElementsByClassName("Rac_Gal_O")[galaxySeparator];
+                    list.childNodes[sectorIndex + elementAdded].className += " " + galaxyCache + ":" + secteurSystem + "_S";
+                    list.childNodes[sectorIndex + elementAdded].setAttribute("id",item.slice(2));
+                    list.insertBefore(node,list.childNodes[sectorIndex + elementAdded]);
+
+                    currentSystem = secteurSystem;
+                    elementAdded += 1;
+                }
+                else
+                {
+                    var list2 = pageJeu.getElementById("racourcis_secteurs").getElementsByClassName("Rac_Gal_O")[galaxySeparator];
+                    list2.childNodes[sectorIndex + elementAdded].setAttribute("id",item.slice(2));
+                    list2.childNodes[sectorIndex + elementAdded].className += " " + galaxyCache + ":" + secteurSystem + "_S";
+                }
+                sectorIndex += 1;
+            }
+        });
+    }
+
+    if (ifColoSeparatorExist == 0 && ifSectorSeparatorExist == 0 && firstRun == false)
+    {
+        firstRun = true;
+        console.log("MazytorX 's script : Colo/Sector Separator loaded");
+    }
+}
+
+function hideOrNotColo(system, sector = false, save = false)
+{
+    var systemClass = system + "_C";
+
+    if (sector == true)
+    {
+       systemClass = system + "_S";
+    }
+
+    var listColo = pageJeu.getElementsByClassName(systemClass);
+
+    for (var i = 0; i < listColo.length; i++)
+    {
+        if (pageJeu.getElementsByClassName(systemClass)[i].hidden == true)
+        {
+           pageJeu.getElementsByClassName(systemClass)[i].hidden = false;
+        }
+        else
+        {
+           pageJeu.getElementsByClassName(systemClass)[i].hidden = true;
+        }
+    }
+
+    // add Colo or Secteor system in cacheVar
+    if (save)
+    {
+        var hiddenColoElementCache = GM_getValue("hiddenColoElementCache");
+        var hiddenSectorElementCache = GM_getValue("hiddenSectorElementCache");
+
+        if (sector)
+        {
+            var sectorExist = hiddenSectorElementCache.find(item => item == system);
+
+            if (sectorExist)
+            {
+                var index = hiddenSectorElementCache.indexOf(system);
+                hiddenSectorElementCache.splice(index,1);
+            }
+            else
+            {
+                hiddenSectorElementCache.push(system);
+            }
+            GM_setValue('hiddenSectorElementCache', hiddenSectorElementCache);
+        }
+        else
+        {
+            var coloExist = hiddenColoElementCache.find(item => item == system);
+
+            if (coloExist)
+            {
+                var index2 = hiddenColoElementCache.indexOf(system);
+                hiddenColoElementCache.splice(index2,1);
+            }
+            else
+            {
+                hiddenColoElementCache.push(system);
+            }
+            GM_setValue('hiddenColoElementCache', hiddenColoElementCache);
+        }
+    }
+}
+
+function FixAt15Trad()
+{
+    var checkRampePage = pageJeu.getElementsByClassName("DeroulantTitreVisible")[0];
+    if (checkRampePage == null)
+    {
+        return;
+    }
+    if (checkRampePage.innerHTML == "Accélérateur Temporel")
+    {
+        var check = pageJeu.getElementsByClassName("DeroulantTitreVisible");
+
+        if (check != null && check[1].innerHTML == "A_SAT_1N")
+        {
+            pageJeu.getElementsByClassName("DeroulantTitreVisible")[1].innerHTML = "Accélérateur Temporel - SUPER";
+            pageJeu.getElementsByClassName("DeroulantVisible")[1].children[0].innerHTML = "Au niveau 15 de l'accélérateur Temporel, vous pouvez accélérer " +
+                "le temps du système ENTIER contre un cout en photopile 10x plus élevé.";
+
+            pageJeu.getElementsByClassName("InfoActions")[1].innerHTML = "Activer pour tout le système";
+        }
+    }
+}
+// MazytorX END Script - Colo and Sector Separator.
